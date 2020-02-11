@@ -79,14 +79,16 @@ func initOpenGL() uint32 {
 	gl.AttachShader(prog, fragmentShader)
 
 	gl.LinkProgram(prog)
-	var success int32
-	gl.GetProgramiv(prog, gl.LINK_STATUS, &success)
-	if success == gl.FALSE {
-		var logLength int32
-		gl.GetProgramiv(prog, gl.INFO_LOG_LENGTH, &logLength)
-		logLines := strings.Repeat("\x00", int(logLength))
-		gl.GetProgramInfoLog(prog, logLength, nil, gl.Str(logLines))
-		log.Fatalf("Failed to link program with error: %q", logLines)
+	if debug {
+		var success int32
+		gl.GetProgramiv(prog, gl.LINK_STATUS, &success)
+		if success == gl.FALSE {
+			var logLength int32
+			gl.GetProgramiv(prog, gl.INFO_LOG_LENGTH, &logLength)
+			logLines := strings.Repeat("\x00", int(logLength))
+			gl.GetProgramInfoLog(prog, logLength, nil, gl.Str(logLines))
+			log.Fatalf("Failed to link program with error: %q", logLines)
+		}
 	}
 
 	gl.ClearColor(0.2, 0.3, 0.3, 1.0)
