@@ -1,16 +1,22 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"runtime"
+	"strings"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 )
 
-const (
-	width  = 500
-	height = 500
+var (
+	triangle = []float32{
+		0, 0.5, 0, // top
+		-0.5, -0.5, 0, // left
+		0.5, -0.5, 0, // right
+	}
+	debug = true
 )
 
 func main() {
@@ -20,9 +26,15 @@ func main() {
 	defer glfw.Terminate()
 
 	program := initOpenGL()
+	_ = makeVertexBufferObject(triangle)
+	_, err := compileVertexShader(simpleVertexShader)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	for !window.ShouldClose() {
 		draw(window, program)
+		processInput(window)
 	}
 }
 
@@ -33,12 +45,13 @@ func initGlfw() *glfw.Window {
 	}
 
 	glfw.WindowHint(glfw.Resizable, glfw.False)
-	glfw.WindowHint(glfw.ContextVersionMajor, 3) // OR 2
+	// these versions match gl core imported above
+	glfw.WindowHint(glfw.ContextVersionMajor, 3)
 	glfw.WindowHint(glfw.ContextVersionMinor, 3)
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
 
-	window, err := glfw.CreateWindow(width, height, "Zarch (sort of)", nil, nil)
+	window, err := glfw.CreateWindow(800, 600, "Zarch (WIP)", nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -57,6 +70,8 @@ func initOpenGL() uint32 {
 
 	prog := gl.CreateProgram()
 	gl.LinkProgram(prog)
+	gl.ClearColor(0.2, 0.3, 0.3, 1.0)
+
 	return prog
 }
 
@@ -67,3 +82,47 @@ func draw(window *glfw.Window, program uint32) {
 	glfw.PollEvents()
 	window.SwapBuffers()
 }
+
+func processInput(window *glfw.Window) {
+	if window.GetKey(glfw.KeyEscape) == glfw.Press {
+		window.SetShouldClose(true)
+	}
+}
+
+func makeVertexBufferObject(points []float32) uint32 {
+	var vertexBufferObject uint32
+	gl.GenBuffers(1, &vertexBufferObject)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBufferObject)
+	gl.BufferData(gl.ARRAY_BUFFER, 4*len(points), gl.Ptr(points), gl.STATIC_DRAW)
+	return vertexBufferObject
+}
+
+func compileVertexShader(code string) (uint32, error) {
+	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
+	shaderSource, free := gl.Strs(code)
+	gl.ShaderSource(vertexShader, 1, shaderSource, nil)
+	free()
+	gl.CompileShader(vertexShader)
+	if debug {
+		var status int32
+		gl.GetShaderiv(vertexShader, gl.COMPILE_STATUS, &status)
+		if status == gl.FALSE {
+			var logLength int32
+			gl.GetShaderiv(vertexShader, gl.INFO_LOG_LENGTH, &logLength)
+
+			log := strings.Repeat("\x00", int(logLength))
+			gl.GetShaderInfoLog(vertexShader, 512, nil, gl.Str(log))
+			return 0, fmt.Errorf("Failed to compile shader with error: %q", log)
+		}
+	}
+
+	return vertexShader, nil
+}
+
+var simpleVertexShader = `#version 330 core
+layout (location = 0) in vec3 aPos;
+
+void main()
+{
+    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+}`
