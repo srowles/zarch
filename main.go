@@ -27,10 +27,6 @@ func main() {
 
 	program := initOpenGL()
 	_ = makeVertexBufferObject(triangle)
-	_, err := compileVertexShader(simpleVertexShader)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	for !window.ShouldClose() {
 		draw(window, program)
@@ -69,7 +65,30 @@ func initOpenGL() uint32 {
 	log.Println("OpenGL version", version)
 
 	prog := gl.CreateProgram()
+
+	// build shaders
+	vertexShader, err := compileShader(simpleVertexShader, gl.VERTEX_SHADER)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fragmentShader, err := compileShader(simpleFragmentShader, gl.FRAGMENT_SHADER)
+	if err != nil {
+		log.Fatal(err)
+	}
+	gl.AttachShader(prog, vertexShader)
+	gl.AttachShader(prog, fragmentShader)
+
 	gl.LinkProgram(prog)
+	var success int32
+	gl.GetProgramiv(prog, gl.LINK_STATUS, &success)
+	if success == gl.FALSE {
+		var logLength int32
+		gl.GetProgramiv(prog, gl.INFO_LOG_LENGTH, &logLength)
+		logLines := strings.Repeat("\x00", int(logLength))
+		gl.GetProgramInfoLog(prog, logLength, nil, gl.Str(logLines))
+		log.Fatalf("Failed to link program with error: %q", logLines)
+	}
+
 	gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 
 	return prog
@@ -97,8 +116,8 @@ func makeVertexBufferObject(points []float32) uint32 {
 	return vertexBufferObject
 }
 
-func compileVertexShader(code string) (uint32, error) {
-	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
+func compileShader(code string, shaderType uint32) (uint32, error) {
+	vertexShader := gl.CreateShader(shaderType)
 	shaderSource, free := gl.Strs(code)
 	gl.ShaderSource(vertexShader, 1, shaderSource, nil)
 	free()
@@ -111,8 +130,8 @@ func compileVertexShader(code string) (uint32, error) {
 			gl.GetShaderiv(vertexShader, gl.INFO_LOG_LENGTH, &logLength)
 
 			log := strings.Repeat("\x00", int(logLength))
-			gl.GetShaderInfoLog(vertexShader, 512, nil, gl.Str(log))
-			return 0, fmt.Errorf("Failed to compile shader with error: %q", log)
+			gl.GetShaderInfoLog(vertexShader, logLength, nil, gl.Str(log))
+			return 0, fmt.Errorf("Failed to compile shader %q with error: %q", code, log)
 		}
 	}
 
@@ -126,3 +145,11 @@ void main()
 {
     gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
 }`
+
+var simpleFragmentShader = `#version 330 core
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+} `
