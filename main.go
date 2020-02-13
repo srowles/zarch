@@ -31,7 +31,8 @@ var (
 		0, 1, 3, // first triangle
 		1, 2, 3, // second triangle
 	}
-	debug = true
+	debug     = true
+	wireFrame = false
 )
 
 const floatSize = 4
@@ -64,7 +65,6 @@ func main() {
 	// unbind the buffers here
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 	gl.BindVertexArray(0)
-	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	for !window.ShouldClose() {
 		draw(window, program, vertexArrayObject)
@@ -151,6 +151,14 @@ func draw(window *glfw.Window, program uint32, vao uint32) {
 func processInput(window *glfw.Window) {
 	if window.GetKey(glfw.KeyEscape) == glfw.Press {
 		window.SetShouldClose(true)
+	}
+	if window.GetKey(glfw.KeyW) == glfw.Press {
+		wireFrame = !wireFrame
+		mode := uint32(gl.FILL)
+		if wireFrame {
+			mode = gl.LINE
+		}
+		gl.PolygonMode(gl.FRONT_AND_BACK, mode)
 	}
 }
 
