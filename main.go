@@ -12,12 +12,14 @@ import (
 
 var (
 	triangle = []float32{
-		0, 0.5, 0, // top
-		-0.5, -0.5, 0, // left
-		0.5, -0.5, 0, // right
+		-0.5, -0.5, 0.0,
+		0.5, -0.5, 0.0,
+		0.0, 0.5, 0.0,
 	}
 	debug = true
 )
+
+const floatSize = 4
 
 func main() {
 	runtime.LockOSThread()
@@ -26,10 +28,24 @@ func main() {
 	defer glfw.Terminate()
 
 	program := initOpenGL()
-	_ = makeVertexBufferObject(triangle)
+
+	var vertexBufferObject, vertexArrayObject uint32
+	gl.GenVertexArrays(1, &vertexArrayObject)
+	gl.GenBuffers(1, &vertexBufferObject)
+
+	gl.BindVertexArray(vertexArrayObject)
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBufferObject)
+	gl.BufferData(gl.ARRAY_BUFFER, 4*len(triangle), gl.Ptr(triangle), gl.STATIC_DRAW) // float = size 4
+
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 3*4, nil)
+	gl.EnableVertexAttribArray(0)
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+	gl.BindVertexArray(0)
 
 	for !window.ShouldClose() {
-		draw(window, program)
+		draw(window, program, vertexArrayObject)
 		processInput(window)
 	}
 }
@@ -79,6 +95,7 @@ func initOpenGL() uint32 {
 	gl.AttachShader(prog, fragmentShader)
 
 	gl.LinkProgram(prog)
+
 	if debug {
 		var success int32
 		gl.GetProgramiv(prog, gl.LINK_STATUS, &success)
@@ -90,15 +107,20 @@ func initOpenGL() uint32 {
 			log.Fatalf("Failed to link program with error: %q", logLines)
 		}
 	}
-
-	gl.ClearColor(0.2, 0.3, 0.3, 1.0)
+	// once linked we can delete the shader objects
+	gl.DeleteShader(vertexShader)
+	gl.DeleteShader(fragmentShader)
 
 	return prog
 }
 
-func draw(window *glfw.Window, program uint32) {
+func draw(window *glfw.Window, program uint32, vao uint32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	gl.Clear(gl.COLOR_BUFFER_BIT)
+
 	gl.UseProgram(program)
+	gl.BindVertexArray(vao)
+	gl.DrawArrays(gl.TRIANGLES, 0, 3)
 
 	glfw.PollEvents()
 	window.SwapBuffers()
@@ -108,14 +130,6 @@ func processInput(window *glfw.Window) {
 	if window.GetKey(glfw.KeyEscape) == glfw.Press {
 		window.SetShouldClose(true)
 	}
-}
-
-func makeVertexBufferObject(points []float32) uint32 {
-	var vertexBufferObject uint32
-	gl.GenBuffers(1, &vertexBufferObject)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBufferObject)
-	gl.BufferData(gl.ARRAY_BUFFER, 4*len(points), gl.Ptr(points), gl.STATIC_DRAW)
-	return vertexBufferObject
 }
 
 func compileShader(code string, shaderType uint32) (uint32, error) {
