@@ -5,6 +5,7 @@ import (
 	"log"
 	"runtime"
 	"strings"
+	"unsafe"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
@@ -19,7 +20,7 @@ var (
 	debug = true
 )
 
-const floatSize = 4
+const floatSize = int(unsafe.Sizeof(float32(0)))
 
 func main() {
 	runtime.LockOSThread()
@@ -36,9 +37,9 @@ func main() {
 	gl.BindVertexArray(vertexArrayObject)
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBufferObject)
-	gl.BufferData(gl.ARRAY_BUFFER, 4*len(triangle), gl.Ptr(triangle), gl.STATIC_DRAW) // float = size 4
+	gl.BufferData(gl.ARRAY_BUFFER, floatSize*len(triangle), gl.Ptr(triangle), gl.STATIC_DRAW)
 
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 3*4, nil)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, int32(3*floatSize), nil)
 	gl.EnableVertexAttribArray(0)
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
