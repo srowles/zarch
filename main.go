@@ -5,7 +5,6 @@ import (
 	"log"
 	"runtime"
 	"strings"
-	"unsafe"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
@@ -13,14 +12,30 @@ import (
 
 var (
 	triangle = []float32{
-		-0.5, -0.5, 0.0,
-		0.5, -0.5, 0.0,
-		0.0, 0.5, 0.0,
+		// first triangle
+		0.5, 0.5, 0.0, // top right
+		0.5, -0.5, 0.0, // bottom right
+		-0.5, 0.5, 0.0, // top left
+		// second triangle
+		// 0.5, -0.5, 0.0, // bottom right
+		// -0.5, -0.5, 0.0, // bottom left
+		// -0.5, 0.5, 0.0, // top left
+	}
+	vertices = []float32{
+		0.5, 0.5, 0.0, // top right
+		0.5, -0.5, 0.0, // bottom right
+		-0.5, -0.5, 0.0, // bottom left
+		-0.5, 0.5, 0.0, // top left
+	}
+	indices = []uint16{ // note that we start from 0!
+		0, 1, 3, // first triangle
+		1, 2, 3, // second triangle
 	}
 	debug = true
 )
 
-const floatSize = int(unsafe.Sizeof(float32(0)))
+const floatSize = 4
+const intSize = 2
 
 func main() {
 	runtime.LockOSThread()
@@ -30,20 +45,26 @@ func main() {
 
 	program := initOpenGL()
 
-	var vertexBufferObject, vertexArrayObject uint32
+	var vertexBufferObject, vertexArrayObject, elementBufferObject uint32
 	gl.GenVertexArrays(1, &vertexArrayObject)
 	gl.GenBuffers(1, &vertexBufferObject)
+	gl.GenBuffers(1, &elementBufferObject)
 
 	gl.BindVertexArray(vertexArrayObject)
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBufferObject)
-	gl.BufferData(gl.ARRAY_BUFFER, floatSize*len(triangle), gl.Ptr(triangle), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, floatSize*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
+
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBufferObject)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, intSize*len(indices), gl.Ptr(indices), gl.STATIC_DRAW)
 
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, int32(3*floatSize), nil)
 	gl.EnableVertexAttribArray(0)
 
+	// unbind the buffers here
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 	gl.BindVertexArray(0)
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	for !window.ShouldClose() {
 		draw(window, program, vertexArrayObject)
@@ -121,7 +142,7 @@ func draw(window *glfw.Window, program uint32, vao uint32) {
 
 	gl.UseProgram(program)
 	gl.BindVertexArray(vao)
-	gl.DrawArrays(gl.TRIANGLES, 0, 3)
+	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, nil)
 
 	glfw.PollEvents()
 	window.SwapBuffers()
