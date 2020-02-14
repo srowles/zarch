@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math"
 	"runtime"
 	"strings"
 
@@ -24,10 +23,10 @@ var (
 		// -0.5, 0.5, 0.0, // top left
 	}
 	vertices = []float32{
-		0.5, 0.5, 0.0, // top right
-		0.5, -0.5, 0.0, // bottom right
-		-0.5, -0.5, 0.0, // bottom left
-		-0.5, 0.5, 0.0, // top left
+		0.5, 0.5, 0.0, 0.0, 0.0, 1.0, // top right
+		0.5, -0.5, 0.0, 1.0, 0.0, 0.0, // bottom right
+		-0.5, -0.5, 0.0, 1.0, 1.0, 0.0, // bottom left
+		-0.5, 0.5, 0.0, 1.0, 0.0, 1.0, // top left
 	}
 	indices = []uint16{ // note that we start from 0!
 		0, 1, 3, // first triangle
@@ -61,8 +60,12 @@ func main() {
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBufferObject)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, intSize*len(indices), gl.Ptr(indices), gl.STATIC_DRAW)
 
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, int32(3*floatSize), nil)
+	// position data
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, int32(6*floatSize), nil)
 	gl.EnableVertexAttribArray(0)
+	// color data
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, int32(6*floatSize), gl.PtrOffset(3*floatSize))
+	gl.EnableVertexAttribArray(1)
 
 	// unbind the buffers here
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
@@ -150,11 +153,11 @@ func draw(window *glfw.Window, program uint32, vao uint32) {
 	gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 
-	timeValue := glfw.GetTime()
-	green := (math.Sin(timeValue) / 2.0) + 0.5
-	vertexColourLocation := gl.GetUniformLocation(program, gl.Str("ourColor\x00"))
+	// timeValue := glfw.GetTime()
+	// green := (math.Sin(timeValue) / 2.0) + 0.5
+	// vertexColourLocation := gl.GetUniformLocation(program, gl.Str("ourColor\x00"))
+	// gl.Uniform4f(vertexColourLocation, 0.0, float32(green), 0.0, 1.0)
 	gl.UseProgram(program)
-	gl.Uniform4f(vertexColourLocation, 0.0, float32(green), 0.0, 1.0)
 	gl.BindVertexArray(vao)
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, nil)
 
