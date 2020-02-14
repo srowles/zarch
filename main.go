@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"runtime"
 	"strings"
 
@@ -137,10 +138,14 @@ func initOpenGL() uint32 {
 }
 
 func draw(window *glfw.Window, program uint32, vao uint32) {
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 
+	timeValue := glfw.GetTime()
+	green := (math.Sin(timeValue) / 2.0) + 0.5
+	vertexColourLocation := gl.GetUniformLocation(program, gl.Str("ourColor\x00"))
 	gl.UseProgram(program)
+	gl.Uniform4f(vertexColourLocation, 0.0, float32(green), 0.0, 1.0)
 	gl.BindVertexArray(vao)
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, nil)
 
@@ -197,9 +202,10 @@ void main()
 
 var simpleFragmentShader = `#version 330 core
 out vec4 FragColor;
-in vec4 vertexColor;
+
+uniform vec4 ourColor;
 
 void main()
 {
-    FragColor = vertexColor;
+    FragColor = ourColor;
 } `
