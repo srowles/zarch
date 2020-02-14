@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math"
 	"runtime"
@@ -95,6 +96,14 @@ func initGlfw() *glfw.Window {
 	return window
 }
 
+func readFile(filename string) string {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Fatalf("Failed to read file %s with error %v", filename, err)
+	}
+	return string(data)
+}
+
 // initOpenGL initializes OpenGL and returns an intiialized program.
 func initOpenGL() uint32 {
 	if err := gl.Init(); err != nil {
@@ -106,11 +115,11 @@ func initOpenGL() uint32 {
 	prog := gl.CreateProgram()
 
 	// build shaders
-	vertexShader, err := compileShader(simpleVertexShader, gl.VERTEX_SHADER)
+	vertexShader, err := compileShader(readFile("vertex.glsl"), gl.VERTEX_SHADER)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fragmentShader, err := compileShader(simpleFragmentShader, gl.FRAGMENT_SHADER)
+	fragmentShader, err := compileShader(readFile("fragment.glsl"), gl.FRAGMENT_SHADER)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -188,24 +197,3 @@ func compileShader(code string, shaderType uint32) (uint32, error) {
 
 	return vertexShader, nil
 }
-
-var simpleVertexShader = `#version 330 core
-layout (location = 0) in vec3 aPos;
-
-out vec4 vertexColor;
-
-void main()
-{
-    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-    vertexColor = vec4(0.5, 0.0, 0.0, 1.0);
-}`
-
-var simpleFragmentShader = `#version 330 core
-out vec4 FragColor;
-
-uniform vec4 ourColor;
-
-void main()
-{
-    FragColor = ourColor;
-} `
