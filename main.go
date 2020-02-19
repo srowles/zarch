@@ -97,15 +97,15 @@ func main() {
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
 
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	// 	float borderColor[] = { 1.0f, 1.0f, 0.0f, 1.0f };
 	//  glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 	// texture texl interpolation
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	// load texture data
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, int32(i.Bounds().Max.X), int32(i.Bounds().Max.Y), 0, gl.RGB, gl.UNSIGNED_BYTE, gl.Ptr(i.Pix))
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(i.Bounds().Max.X), int32(i.Bounds().Max.Y), 0, gl.RGB, gl.UNSIGNED_BYTE, gl.Ptr(i.Pix))
 	// gl.GenerateMipmap(gl.TEXTURE_2D)
 
 	// unbind the buffers here
