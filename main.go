@@ -16,16 +16,6 @@ import (
 )
 
 var (
-	triangle = []float32{
-		// first triangle
-		0.5, 0.5, 0.0, // top right
-		0.5, -0.5, 0.0, // bottom right
-		-0.5, 0.5, 0.0, // top left
-		// second triangle
-		// 0.5, -0.5, 0.0, // bottom right
-		// -0.5, -0.5, 0.0, // bottom left
-		// -0.5, 0.5, 0.0, // top left
-	}
 	vertices = []float32{
 		// positions      // colors         // texture coords
 		+0.5, +0.5, +0.0, +1.0, +0.0, +0.0, +1.0, +1.0, // top right
@@ -37,11 +27,6 @@ var (
 		0, 1, 3, // first triangle
 		1, 2, 3, // second triangle
 	}
-	texCoords = []float32{
-		0.0, 0.0, // lower-left corner
-		1.0, 0.0, // lower-right corner
-		0.5, 1.0, // top-center corner
-	}
 	debug     = true
 	wireFrame = false
 )
@@ -51,7 +36,7 @@ const intSize = 2
 
 func main() {
 	image.RegisterFormat("jpg", "jpeg", jpeg.Decode, jpeg.DecodeConfig)
-	imgfile, err := os.Open("container.jpg")
+	imgfile, err := os.Open("tron-grid.jpg")
 	if err != nil {
 		log.Fatalf("Failed to open %s with error: %v", "container.jpg", err)
 	}
@@ -97,16 +82,16 @@ func main() {
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
 
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
 	// 	float borderColor[] = { 1.0f, 1.0f, 0.0f, 1.0f };
 	//  glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 	// texture texl interpolation
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	// load texture data
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(i.Bounds().Max.X), int32(i.Bounds().Max.Y), 0, gl.RGB, gl.UNSIGNED_BYTE, gl.Ptr(i.Pix))
-	// gl.GenerateMipmap(gl.TEXTURE_2D)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(i.Bounds().Max.X), int32(i.Bounds().Max.Y), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(i.Pix))
+	gl.GenerateMipmap(gl.TEXTURE_2D)
 
 	// unbind the buffers here
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
@@ -116,6 +101,9 @@ func main() {
 		drawScene(window, program, vertexArrayObject, texture)
 		processInput(window)
 	}
+	gl.DeleteVertexArrays(1, &vertexArrayObject)
+	gl.DeleteBuffers(1, &vertexBufferObject)
+	gl.DeleteBuffers(1, &elementBufferObject)
 }
 
 // initGlfw initializes glfw and returns a Window to use.
@@ -171,7 +159,6 @@ func initOpenGL() uint32 {
 	gl.AttachShader(prog, fragmentShader)
 
 	gl.LinkProgram(prog)
-
 	if debug {
 		var success int32
 		gl.GetProgramiv(prog, gl.LINK_STATUS, &success)
