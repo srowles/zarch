@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
+	"image"
+	"image/draw"
+	"image/jpeg"
 	"io/ioutil"
 	"log"
+	"os"
 	"runtime"
 	"strings"
 
@@ -23,14 +27,20 @@ var (
 		// -0.5, 0.5, 0.0, // top left
 	}
 	vertices = []float32{
-		0.5, 0.5, 0.0, 0.0, 0.0, 1.0, // top right
-		0.5, -0.5, 0.0, 1.0, 0.0, 0.0, // bottom right
-		-0.5, -0.5, 0.0, 1.0, 1.0, 0.0, // bottom left
-		-0.5, 0.5, 0.0, 1.0, 0.0, 1.0, // top left
+		// positions      // colors         // texture coords
+		+0.5, +0.5, +0.0, +1.0, +0.0, +0.0, +1.0, +1.0, // top right
+		+0.5, -0.5, +0.0, +0.0, +1.0, +0.0, +1.0, +0.0, // bottom right
+		-0.5, -0.5, +0.0, +0.0, +0.0, +1.0, +0.0, +0.0, // bottom left
+		-0.5, +0.5, +0.0, +1.0, +1.0, +0.0, +0.0, +1.0, // top left
 	}
-	indices = []uint16{ // note that we start from 0!
+	indices = []uint16{
 		0, 1, 3, // first triangle
 		1, 2, 3, // second triangle
+	}
+	texCoords = []float32{
+		0.0, 0.0, // lower-left corner
+		1.0, 0.0, // lower-right corner
+		0.5, 1.0, // top-center corner
 	}
 	debug     = true
 	wireFrame = false
@@ -40,6 +50,17 @@ const floatSize = 4
 const intSize = 2
 
 func main() {
+	image.RegisterFormat("jpg", "jpeg", jpeg.Decode, jpeg.DecodeConfig)
+	imgfile, err := os.Open("container.jpg")
+	if err != nil {
+		log.Fatalf("Failed to open %s with error: %v", "container.jpg", err)
+	}
+	defer imgfile.Close()
+
+	img, _, err := image.Decode(imgfile)
+	i := image.NewRGBA(img.Bounds())
+	draw.Draw(i, img.Bounds(), img, img.Bounds().Min, draw.Src)
+
 	runtime.LockOSThread()
 
 	window := initGlfw()
@@ -61,18 +82,38 @@ func main() {
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, intSize*len(indices), gl.Ptr(indices), gl.STATIC_DRAW)
 
 	// position data
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, int32(6*floatSize), nil)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, int32(8*floatSize), nil)
 	gl.EnableVertexAttribArray(0)
 	// color data
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, int32(6*floatSize), gl.PtrOffset(3*floatSize))
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, int32(8*floatSize), gl.PtrOffset(3*floatSize))
 	gl.EnableVertexAttribArray(1)
+	// texture coords
+	gl.VertexAttribPointer(2, 2, gl.FLOAT, false, int32(8*floatSize), gl.PtrOffset(6*floatSize))
+	gl.EnableVertexAttribArray(2)
+
+	// texture stuff
+	var texture uint32
+	gl.GenTextures(1, &texture)
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.BindTexture(gl.TEXTURE_2D, texture)
+
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	// 	float borderColor[] = { 1.0f, 1.0f, 0.0f, 1.0f };
+	//  glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+	// texture texl interpolation
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	// load texture data
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, int32(i.Bounds().Max.X), int32(i.Bounds().Max.Y), 0, gl.RGB, gl.UNSIGNED_BYTE, gl.Ptr(i.Pix))
+	// gl.GenerateMipmap(gl.TEXTURE_2D)
 
 	// unbind the buffers here
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 	gl.BindVertexArray(0)
 
 	for !window.ShouldClose() {
-		draw(window, program, vertexArrayObject)
+		drawScene(window, program, vertexArrayObject, texture)
 		processInput(window)
 	}
 }
@@ -118,11 +159,11 @@ func initOpenGL() uint32 {
 	prog := gl.CreateProgram()
 
 	// build shaders
-	vertexShader, err := compileShader(readFile("vertex.glsl"), gl.VERTEX_SHADER)
+	vertexShader, err := compileShader(readFile("vertex-tex.glsl"), gl.VERTEX_SHADER)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fragmentShader, err := compileShader(readFile("fragment.glsl"), gl.FRAGMENT_SHADER)
+	fragmentShader, err := compileShader(readFile("fragment-tex.glsl"), gl.FRAGMENT_SHADER)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -149,7 +190,7 @@ func initOpenGL() uint32 {
 	return prog
 }
 
-func draw(window *glfw.Window, program uint32, vao uint32) {
+func drawScene(window *glfw.Window, program uint32, vao uint32, texture uint32) {
 	gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 
@@ -158,6 +199,7 @@ func draw(window *glfw.Window, program uint32, vao uint32) {
 	// vertexColourLocation := gl.GetUniformLocation(program, gl.Str("ourColor\x00"))
 	// gl.Uniform4f(vertexColourLocation, 0.0, float32(green), 0.0, 1.0)
 	gl.UseProgram(program)
+	gl.BindTexture(gl.TEXTURE_2D, texture)
 	gl.BindVertexArray(vao)
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, nil)
 
@@ -180,23 +222,23 @@ func processInput(window *glfw.Window) {
 }
 
 func compileShader(code string, shaderType uint32) (uint32, error) {
-	vertexShader := gl.CreateShader(shaderType)
+	shader := gl.CreateShader(shaderType)
 	shaderSource, free := gl.Strs(code)
-	gl.ShaderSource(vertexShader, 1, shaderSource, nil)
+	gl.ShaderSource(shader, 1, shaderSource, nil)
 	free()
-	gl.CompileShader(vertexShader)
+	gl.CompileShader(shader)
 	if debug {
 		var status int32
-		gl.GetShaderiv(vertexShader, gl.COMPILE_STATUS, &status)
+		gl.GetShaderiv(shader, gl.COMPILE_STATUS, &status)
 		if status == gl.FALSE {
 			var logLength int32
-			gl.GetShaderiv(vertexShader, gl.INFO_LOG_LENGTH, &logLength)
+			gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &logLength)
 
 			log := strings.Repeat("\x00", int(logLength))
-			gl.GetShaderInfoLog(vertexShader, logLength, nil, gl.Str(log))
+			gl.GetShaderInfoLog(shader, logLength, nil, gl.Str(log))
 			return 0, fmt.Errorf("Failed to compile shader %q with error: %q", code, log)
 		}
 	}
 
-	return vertexShader, nil
+	return shader, nil
 }
