@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/go-gl/mathgl/mgl32"
+
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 )
@@ -51,7 +53,7 @@ func main() {
 	window := initGlfw()
 	defer glfw.Terminate()
 
-	program := initOpenGL()
+	program, vertexShader := initOpenGL()
 
 	var vertexBufferObject, vertexArrayObject, elementBufferObject uint32
 	gl.GenVertexArrays(1, &vertexArrayObject)
@@ -98,7 +100,7 @@ func main() {
 	gl.BindVertexArray(0)
 
 	for !window.ShouldClose() {
-		drawScene(window, program, vertexArrayObject, texture)
+		drawScene(window, program, vertexArrayObject, texture, vertexShader)
 		processInput(window)
 	}
 	gl.DeleteVertexArrays(1, &vertexArrayObject)
@@ -137,7 +139,7 @@ func readFile(filename string) string {
 }
 
 // initOpenGL initializes OpenGL and returns an intiialized program.
-func initOpenGL() uint32 {
+func initOpenGL() (uint32, uint32) {
 	if err := gl.Init(); err != nil {
 		panic(err)
 	}
@@ -174,10 +176,10 @@ func initOpenGL() uint32 {
 	gl.DeleteShader(vertexShader)
 	gl.DeleteShader(fragmentShader)
 
-	return prog
+	return prog, vertexShader
 }
 
-func drawScene(window *glfw.Window, program uint32, vao uint32, texture uint32) {
+func drawScene(window *glfw.Window, program uint32, vao uint32, texture uint32, shaderID uint32) {
 	gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 
@@ -188,6 +190,12 @@ func drawScene(window *glfw.Window, program uint32, vao uint32, texture uint32) 
 	gl.UseProgram(program)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
 	gl.BindVertexArray(vao)
+
+	matrix := mgl32.Ident4()
+	matrix = matrix.Mul4(mgl32.HomogRotate3D(float32(glfw.GetTime()), mgl32.Vec3{0, 0, 1}))
+	matrix = matrix.Mul4(mgl32.Scale3D(1.5, 1.5, 1.5))
+
+	gl.UniformMatrix4fv(gl.GetUniformLocation(program, gl.Str("transform\x00")), 1, false, &matrix[0])
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, nil)
 
 	glfw.PollEvents()
