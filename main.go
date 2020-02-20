@@ -90,7 +90,7 @@ func main() {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	// load texture data
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(i.Bounds().Max.X), int32(i.Bounds().Max.Y), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(i.Pix))
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, int32(i.Bounds().Max.X), int32(i.Bounds().Max.Y), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(i.Pix))
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 
 	// unbind the buffers here
